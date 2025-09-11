@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ستارليغ - تأهيل اللاعبين</title>
+  <link rel="stylesheet" href="../styles/main.css" />
+  <link rel="stylesheet" href="../styles/admin.css" />
+  <script defer src="./admin.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      try { window.AdminAuth && window.AdminAuth.requireAuth(); } catch(e) {}
+      const cur = location.pathname.split('/').pop();
+      document.querySelectorAll('.sidebar .nav-link').forEach(a=>{ if(a.getAttribute('href').includes(cur)) a.classList.add('active'); });
+    });
+  </script>
+</head>
+<body class="admin admin-players">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">★</div>
+      <div class="brand-text">
+        <div class="brand-title">ستارليغ</div>
+        <div class="brand-sub">لوحة الإدارة</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link" href="./index.html">🏠 <span>اللوحة الرئيسية</span></a>
+      <a class="nav-link" href="./slides.html">🖼️ <span>السلايدر</span></a>
+      <a class="nav-link" href="./teams.html">🛡️ <span>الفرق</span></a>
+      <a class="nav-link" href="./matches.html">🏟️ <span>المباريات</span></a>
+      <a class="nav-link" href="./news.html">📰 <span>الأخبار</span></a>
+      <a class="nav-link" href="./partners.html">🤝 <span>الشركاء</span></a>
+      <a class="nav-link" href="./registrations.html">📝 <span>طلبات التسجيل</span></a>
+      <a class="nav-link" href="./players.html">✅ <span>تأهيل اللاعبين</span></a>
+      <a class="nav-link" href="./settings.html">⚙️ <span>الإعدادات</span></a>
+    </nav>
+    <div class="sidebar-foot">
+      <button id="btn-logout" class="btn danger" style="width:100%">تسجيل الخروج</button>
+    </div>
+  </aside>
+
+  <div class="layout-main">
+    <header class="topbar">
+      <div class="topbar-left"><div class="search"><input id="players-search" class="input" placeholder="ابحث عن لاعب..." /></div></div>
+      <div class="topbar-right"><div class="admin-user"><div class="avatar">A</div><div class="meta"><div class="name">المشرف</div><div class="role">Admin</div></div></div></div>
+    </header>
+
+    <main class="content container">
+      <section class="panel">
+        <div class="panel-header"><h1>تأهيل اللاعبين</h1></div>
+
+        <div class="table-wrapper card">
+          <table class="table" id="players-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>الاسم</th>
+                <th>الفئة</th>
+                <th>النادي</th>
+                <th>المركز</th>
+                <th>الصورة</th>
+                <th>تاريخ الميلاد</th>
+                <th>الحالة الطبية</th>
+                <th>المرفقات</th>
+                <th>كلمة السر</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./players.js"></script>
+</body>
+</html>

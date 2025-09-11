@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تسجيل الدخول - ستارليغ</title>
+  <link rel="stylesheet" href="../styles/main.css" />
+  <link rel="stylesheet" href="../styles/admin.css" />
+</head>
+<body class="admin">
+  <main class="login-page">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="login-logo">★</div>
+        <div>
+          <div class="login-title">لوحة إدارة ستارليغ</div>
+          <div class="login-muted">يرجى إدخال بياناتك للوصول إلى لوحة التحكم</div>
+        </div>
+      </div>
+
+      <div class="form">
+        <label class="field">
+          <span>اسم المستخدم</span>
+          <input id="user" class="input" placeholder="admin" />
+        </label>
+        <label class="field">
+          <span>كلمة المرور</span>
+          <div style="display:flex; align-items:center; gap:8px">
+            <input id="pass" type="password" class="input" placeholder="123456" style="flex:1" />
+            <button id="toggle" class="btn" type="button" style="padding:6px 10px">👁️</button>
+          </div>
+          <div class="login-muted" style="margin-top:6px">
+            كلمة المرور الافتراضية 123456 ويمكن تغييرها من صفحة الإعدادات
+          </div>
+        </label>
+        <div class="actions" style="margin-top:10px">
+          <button id="login" class="btn primary" style="width:100%">تسجيل الدخول</button>
+        </div>
+        <div id="login-msg" class="login-muted" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="./admin.js"></script>
+  <script>
+    // Password toggle
+    document.querySelector('#toggle').addEventListener('click', ()=>{
+      const p = document.querySelector('#pass');
+      p.type = (p.type === 'password') ? 'text' : 'password';
+    });
+
+    // Perform login
+    document.querySelector('#login').addEventListener('click', ()=>{
+      const u = document.querySelector('#user').value.trim();
+      const p = document.querySelector('#pass').value.trim();
+      const ok = window.AdminAuth.login(u,p);
+      const msg = document.querySelector('#login-msg');
+      if(ok){ msg.textContent = 'تم تسجيل الدخول، يتم تحويلك الآن...'; msg.style.color = '#00d4a6'; setTimeout(()=> location.href = './index.html', 600); }
+      else { msg.textContent = 'بيانات غير صحيحة'; msg.style.color = '#ff8b9d'; }
+    });
+  </script>
+</body>
+</html>

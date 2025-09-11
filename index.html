@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة التحكم - ستارليغ</title>
+  <link rel="stylesheet" href="../styles/main.css" />
+  <link rel="stylesheet" href="../styles/admin.css" />
+  <style>
+    /* Page-scoped tweaks (kept minimal) */
+    .stat-number { font-size: 28px; font-weight: 800; color:#fff; }
+    .stat-label { color: var(--muted); font-size: 12px; }
+    .section-title { margin: 0 0 10px; color:#fff; }
+    .table-actions a { color: var(--accent); text-decoration: none; }
+    .muted { color: var(--muted); }
+  </style>
+  <script defer src="./admin.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      try { window.AdminAuth && window.AdminAuth.requireAuth(); } catch(e) {}
+      // Highlight active link
+      const cur = location.pathname.split('/').pop() || 'index.html';
+      document.querySelectorAll('.sidebar .nav-link').forEach(a=>{
+        if(a.getAttribute('href') === './' + cur || (cur==='index.html' && a.getAttribute('href').includes('index.html'))){ a.classList.add('active'); }
+      });
+    });
+  </script>
+</head>
+<body class="admin admin-dashboard">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">★</div>
+      <div class="brand-text">
+        <div class="brand-title">ستارليغ</div>
+        <div class="brand-sub">لوحة الإدارة</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link" href="./index.html">🏠 <span>اللوحة الرئيسية</span></a>
+      <a class="nav-link" href="./slides.html">🖼️ <span>السلايدر</span></a>
+      <a class="nav-link" href="./teams.html">🛡️ <span>الفرق</span></a>
+      <a class="nav-link" href="./matches.html">🏟️ <span>المباريات</span></a>
+      <a class="nav-link" href="./news.html">📰 <span>الأخبار</span></a>
+      <a class="nav-link" href="./partners.html">🤝 <span>الشركاء</span></a>
+      <a class="nav-link" href="./registrations.html">📝 <span>طلبات التسجيل</span></a>
+      <a class="nav-link" href="./players.html">✅ <span>تأهيل اللاعبين</span></a>
+      <a class="nav-link" href="./settings.html">⚙️ <span>الإعدادات</span></a>
+    </nav>
+    <div class="sidebar-foot">
+      <button id="btn-logout" class="btn danger" style="width:100%">تسجيل الخروج</button>
+    </div>
+  </aside>
+
+  <!-- Main area -->
+  <div class="layout-main">
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="search">
+          <input class="input" placeholder="ابحث في المحتوى..." />
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="admin-user">
+          <div class="avatar">A</div>
+          <div class="meta">
+            <div class="name">المشرف</div>
+            <div class="role">Admin</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="content container">
+      <!-- Welcome -->
+      <section class="panel">
+        <div class="panel-header">
+          <h1>مرحبا بك في لوحة التحكم</h1>
+          <div class="muted">يمكنك إدارة السلايدر، الفرق، المباريات، الأخبار، والشركاء بسهولة.</div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="card stat">
+            <div class="stat-number" id="stat-teams">12</div>
+            <div class="stat-label">الفرق</div>
+          </div>
+          <div class="card stat">
+            <div class="stat-number" id="stat-matches">34</div>
+            <div class="stat-label">المباريات</div>
+          </div>
+          <div class="card stat">
+            <div class="stat-number" id="stat-news">18</div>
+            <div class="stat-label">الأخبار</div>
+          </div>
+          <div class="card stat">
+            <div class="stat-number" id="stat-partners">9</div>
+            <div class="stat-label">الشركاء</div>
+          </div>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="quick-grid">
+          <a class="quick-card" href="./matches.html">
+            <div class="q-ico">🏟️</div>
+            <div class="q-text">
+              <div class="q-title">إدارة المباريات</div>
+              <div class="q-sub">إضافة/تعديل النتائج والمواعيد</div>
+            </div>
+          </a>
+          <a class="quick-card" href="./news.html">
+            <div class="q-ico">📰</div>
+            <div class="q-text">
+              <div class="q-title">الأخبار</div>
+              <div class="q-sub">نشر خبر جديد وتحديث الصور</div>
+            </div>
+          </a>
+          <a class="quick-card" href="./teams.html">
+            <div class="q-ico">🛡️</div>
+            <div class="q-text">
+              <div class="q-title">الفرق</div>
+              <div class="q-sub">إدارة الشعارات والبيانات</div>
+            </div>
+          </a>
+          <a class="quick-card" href="./partners.html">
+            <div class="q-ico">🤝</div>
+            <div class="q-text">
+              <div class="q-title">الشركاء</div>
+              <div class="q-sub">تحديث شعارات الشركاء</div>
+            </div>
+          </a>
+          <a class="quick-card" href="./players.html">
+            <div class="q-ico">✅</div>
+            <div class="q-text">
+              <div class="q-title">تأهيل اللاعبين</div>
+              <div class="q-sub">إدخال بيانات التأهيل وحفظها</div>
+            </div>
+          </a>
+        </div>
+
+        <!-- Recent table -->
+        <h3 class="section-title" style="margin-top:18px">أحدث الأنشطة</h3>
+        <div class="table-wrapper card">
+          <table class="table" style="width:100%">
+            <thead>
+              <tr>
+                <th>التاريخ</th>
+                <th>القسم</th>
+                <th>الوصف</th>
+                <th>إجراء</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>2025-09-08</td>
+                <td>الأخبار</td>
+                <td>إضافة خبر حول الجولة القادمة</td>
+                <td class="table-actions"><a href="./news.html">عرض</a></td>
+              </tr>
+              <tr>
+                <td>2025-09-07</td>
+                <td>المباريات</td>
+                <td>تحديث نتيجة مباراة الوداد × الرجاء</td>
+                <td class="table-actions"><a href="./matches.html">عرض</a></td>
+              </tr>
+              <tr>
+                <td>2025-09-06</td>
+                <td>الفرق</td>
+                <td>تعديل شعار نادي الجيش الملكي</td>
+                <td class="table-actions"><a href="./teams.html">عرض</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

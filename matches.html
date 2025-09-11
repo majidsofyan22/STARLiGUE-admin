@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ستارليغ - إدارة المباريات</title>
+  <link rel="stylesheet" href="../styles/main.css" />
+  <link rel="stylesheet" href="../styles/admin.css" />
+  <script defer src="./admin.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      try { window.AdminAuth && window.AdminAuth.requireAuth(); } catch(e) {}
+      const cur = location.pathname.split('/').pop();
+      document.querySelectorAll('.sidebar .nav-link').forEach(a=>{ if(a.getAttribute('href').includes(cur)) a.classList.add('active'); });
+    });
+  </script>
+</head>
+<body class="admin admin-matches">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">★</div>
+      <div class="brand-text">
+        <div class="brand-title">ستارليغ</div>
+        <div class="brand-sub">لوحة الإدارة</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link" href="./index.html">🏠 <span>اللوحة الرئيسية</span></a>
+      <a class="nav-link" href="./slides.html">🖼️ <span>السلايدر</span></a>
+      <a class="nav-link" href="./teams.html">🛡️ <span>الفرق</span></a>
+      <a class="nav-link" href="./matches.html">🏟️ <span>المباريات</span></a>
+      <a class="nav-link" href="./news.html">📰 <span>الأخبار</span></a>
+      <a class="nav-link" href="./partners.html">🤝 <span>الشركاء</span></a>
+      <a class="nav-link" href="./registrations.html">📝 <span>طلبات التسجيل</span></a>
+      <a class="nav-link" href="./settings.html">⚙️ <span>الإعدادات</span></a>
+    </nav>
+    <div class="sidebar-foot">
+      <button id="btn-logout" class="btn danger" style="width:100%">تسجيل الخروج</button>
+    </div>
+  </aside>
+
+  <div class="layout-main">
+    <header class="topbar">
+      <div class="topbar-left"><div class="search"><input class="input" placeholder="ابحث..." /></div></div>
+      <div class="topbar-right"><div class="admin-user"><div class="avatar">A</div><div class="meta"><div class="name">المشرف</div><div class="role">Admin</div></div></div></div>
+    </header>
+
+    <main class="content container">
+      <section class="panel">
+        <div class="panel-header"><h1>المباريات</h1></div>
+
+        <div class="card padded" style="margin-bottom:12px">
+          <h3 style="margin-top:0">إضافة/تعديل مباراة</h3>
+          <form id="match-form" class="form">
+            <input type="hidden" id="match-id" />
+            <div id="teams-note" style="display:none; padding:10px; border:1px solid #fde68a; background:#fffbeb; color:#92400e; border-radius:10px; font-weight:700;">
+              لا توجد فرق متاحة. الرجاء إضافة فرق من صفحة <a href="./teams.html">إدارة الفرق</a> ثم حدّث هذه الصفحة.
+            </div>
+            <div class="grid-2">
+              <label class="field"><span>الفريق (أ)</span><select id="match-home" class="input"></select></label>
+              <label class="field"><span>الفريق (ب)</span><select id="match-away" class="input"></select></label>
+            </div>
+            <div class="grid-2">
+              <label class="field"><span>التاريخ</span><input type="date" id="match-date" class="input" /></label>
+              <label class="field"><span>الساعة</span><input type="time" id="match-time" class="input" /></label>
+            </div>
+            <div class="grid-2">
+              <label class="field"><span>الفئة</span>
+                <select id="match-cat" class="input">
+                  <option value="">—</option>
+                  <option value="U09">U09</option>
+                  <option value="U11">U11</option>
+                  <option value="U13">U13</option>
+                  <option value="U15">U15</option>
+                </select>
+              </label>
+              <label class="field"><span>الجولة</span><input type="number" id="match-round" class="input" min="0" /></label>
+            </div>
+            <div class="grid-2">
+              <label class="field"><span>الملعب</span><input id="match-venue" class="input" /></label>
+              <label class="field"><span>النتيجة (أ - ب)</span><input id="match-score" class="input" placeholder="2-1" /></label>
+            </div>
+            <div class="actions"><button type="submit" class="btn primary">حفظ</button><button id="reset-match" type="button" class="btn">تفريغ</button></div>
+          </form>
+        </div>
+
+        <div class="table-wrapper card">
+          <table class="table" id="matches-table">
+            <thead><tr><th>#</th><th>الفئة</th><th>الجولة</th><th>التاريخ</th><th>الساعة</th><th>الفريق (أ)</th><th>الفريق (ب)</th><th>النتيجة</th><th>الملعب</th><th>إجراءات</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./matches.js"></script>
+</body>
+</html>
