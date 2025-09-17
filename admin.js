@@ -26,11 +26,22 @@
     },
     isAuthed(){ return !!window.firebaseAuth?.currentUser; },
     async login(email, password){
-      // Wait for Firebase to be ready
-      let attempts = 0;
-      while(!hasFirebase() && attempts < 50){ // wait up to 5 seconds
-        await new Promise(res => setTimeout(res, 100));
-        attempts++;
+      // Wait for Firebase to be ready (event + timeout)
+      if (!hasFirebase()) {
+        await new Promise((resolve) => {
+          let done = false;
+          const onReady = ()=>{ if(!done){ done = true; resolve(); } };
+          try { document.addEventListener('firebase-ready', onReady, { once: true }); } catch {}
+          let attempts = 0;
+          const tick = async () => {
+            while(!hasFirebase() && attempts < 150){ // wait up to ~15s
+              await new Promise(r=>setTimeout(r,100));
+              attempts++;
+            }
+            if(!done){ done = true; resolve(); }
+          };
+          tick();
+        });
       }
       if(!hasFirebase()) throw new Error('Firebase غير مهيأ - تأكد من تحميل سكربتات Firebase وملف config.js');
       try{
@@ -98,6 +109,26 @@
 
         if(toggle && passEl){
           toggle.addEventListener('click', ()=>{ passEl.type = (passEl.type === 'password') ? 'text' : 'password'; });
+        }
+
+        // Show Firebase readiness and block login until ready
+        if (msgEl && loginBtn) {
+          const setReadyState = ()=>{
+            if(hasFirebase()){
+              loginBtn.disabled = false;
+              loginBtn.style.opacity = '';
+              msgEl.textContent = '';
+            }else{
+              loginBtn.disabled = true;
+              loginBtn.style.opacity = '0.7';
+              msgEl.textContent = 'جارٍ تهيئة Firebase...';
+              msgEl.style.color = '#999';
+            }
+          };
+          setReadyState();
+          try{ document.addEventListener('firebase-ready', ()=> setReadyState(), { once:true }); }catch{}
+          // Poll as fallback up to ~15s
+          let attempts=0; (async function poll(){ while(!hasFirebase() && attempts<150){ await new Promise(r=>setTimeout(r,100)); attempts++; } setReadyState(); })();
         }
 
         // If already authed, redirect to dashboard
