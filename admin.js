@@ -63,37 +63,8 @@
     },
     async logout(){ try{ await window.authSignOut(); }catch{} },
     requireAuth(){
-      // Allow running from file:// as well; rely solely on Firebase init
-      const isLoginPage = /\/admin\/login\.html?$/.test(location.pathname);
-      const isHttp = /^(http|https|file):$/i.test(location.protocol);
-      if(!isHttp){
-        console.warn('Running under a non-standard protocol; continuing anyway.');
-      }
-      if(!hasFirebase()){
-        alert('Firebase غير مهيأ. تأكد من تحميل سكربتات Firebase وملف config.js.');
-        if(!isLoginPage) location.href = './login.html';
-        return false;
-      }
-      // Wait for Firebase auth state before deciding (prevents redirect flicker)
-      try{
-        if (typeof window.onAuthChanged === 'function') {
-          let decided = false;
-          window.onAuthChanged((u)=>{
-            if (decided) return;
-            decided = true;
-            if (u) {
-              if (isLoginPage) { location.href = './index.html'; }
-            } else {
-              if (!isLoginPage) { location.href = './login.html'; }
-            }
-          });
-          return false;
-        }
-        // Fallback (if auth listener not available yet)
-        const user = window.firebaseAuth?.currentUser;
-        if(!user){ if(!isLoginPage){ location.href = './login.html'; } return false; }
-        return true;
-      }catch{ return true; }
+      // Auth disabled: admin pages are public
+      return true;
     },
 
     // Bind UI for login, settings and common header
@@ -236,7 +207,7 @@
 
       // Logout button (common in sidebar)
       const lo = document.querySelector('#btn-logout');
-      if(lo){ lo.addEventListener('click', async ()=>{ await AdminAuth.logout(); alert('تم تسجيل الخروج'); location.href='./login.html'; }); }
+      if(lo){ lo.addEventListener('click', async ()=>{ try{ await AdminAuth.logout(); }catch{} alert('تم تسجيل الخروج'); location.href='./index.html'; }); }
     }
   };
 
