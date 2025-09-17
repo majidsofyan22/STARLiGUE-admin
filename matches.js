@@ -2,19 +2,39 @@
   'use strict';
   const qs = (s, r=document) => r.querySelector(s);
   const qsa = (s, r=document) => Array.from(r.querySelectorAll(s));
-  const S = (window.AdminAuth && window.AdminAuth.storage) || {
-    get(k, f){ try{return JSON.parse(localStorage.getItem(k)) ?? f;}catch{return f;} },
-    set(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
-  };
-  let teams = S.get('sl_teams', []);
-  let matches = S.get('sl_matches', []);
+  const hasFB = typeof window !== 'undefined' && !!window.dbGet && !!window.dbSet;
 
-  function save(){ S.set('sl_matches', matches); }
+  let teams = [];
+  let matches = [];
+
+  function normalizeFromRemote(list){
+    return (list||[]).map(m => ({
+      ...m,
+      homeGoals: m?.homeGoals === null || m?.homeGoals === undefined ? NaN : Number(m.homeGoals),
+      awayGoals: m?.awayGoals === null || m?.awayGoals === undefined ? NaN : Number(m.awayGoals)
+    }));
+  }
+  function serializeForRemote(list){
+    return (list||[]).map(m => ({
+      ...m,
+      homeGoals: Number.isFinite(m.homeGoals) ? m.homeGoals : null,
+      awayGoals: Number.isFinite(m.awayGoals) ? m.awayGoals : null
+    }));
+  }
+
+  async function load(){
+    if(!hasFB){ teams = []; matches = []; return; }
+    try{
+      const [tSnap, mSnap] = await Promise.all([ window.dbGet('teams'), window.dbGet('matches') ]);
+      teams = tSnap.exists()? (tSnap.val()||[]) : [];
+      matches = mSnap.exists()? normalizeFromRemote(mSnap.val()) : [];
+    }catch{ matches = []; }
+  }
+
+  async function save(){ if(hasFB){ try{ await window.dbSet('matches', serializeForRemote(matches)); }catch{} } }
 
   function fillTeams(){
-    teams = S.get('sl_teams', []);
-    const home = qs('#match-home'); const away = qs('#match-away');
-    const note = qs('#teams-note');
+    const home = qs('#match-home'); const away = qs('#match-away'); const note = qs('#teams-note');
     if(!Array.isArray(teams) || teams.length===0){
       const placeholder = `<option value="" selected disabled>لا توجد فرق — الرجاء إضافة فرق من صفحة الفرق</option>`;
       if(home) home.innerHTML = placeholder;
@@ -43,7 +63,7 @@
   function isPlayed(m){ return Number.isFinite(m.homeGoals) && Number.isFinite(m.awayGoals); }
 
   function render(){
-    const tbody = qs('#matches-table tbody'); tbody.innerHTML='';
+    const tbody = qs('#matches-table tbody'); if(tbody) tbody.innerHTML='';
     const teamById = Object.fromEntries(teams.map(t=> [String(t.id), t]));
     const sorted = [...matches].sort((a,b)=> (Number(a.round||0)-Number(b.round||0)) || (a.date||'').localeCompare(b.date) || (a.time||'').localeCompare(b.time));
     sorted.forEach((m,i)=>{
@@ -63,7 +83,7 @@
           <button class="btn" data-edit="${m.id}">تعديل</button>
           <button class="btn danger" data-del="${m.id}">حذف</button>
         </td>`;
-      tbody.appendChild(tr);
+      tbody?.appendChild(tr);
     });
     qsa('[data-edit]').forEach(b=> b.onclick = ()=> openEdit(b.getAttribute('data-edit')));
     qsa('[data-del]').forEach(b=> b.onclick = ()=> del(b.getAttribute('data-del')));
@@ -83,12 +103,12 @@
     qs('#match-score').value= (isPlayed(m)? `${m.homeGoals}-${m.awayGoals}` : '');
   }
 
-  function del(id){ window.AdminAuth.requireAuth(); matches = matches.filter(m=> String(m.id)!==String(id)); save(); render(); }
+  async function del(id){ window.AdminAuth.requireAuth(); matches = matches.filter(m=> String(m.id)!==String(id)); await save(); render(); }
 
   function setup(){
-    qs('#reset-match').addEventListener('click', resetForm);
+    qs('#reset-match')?.addEventListener('click', resetForm);
     const form = qs('#match-form');
-    form.addEventListener('submit', (e)=>{
+    form?.addEventListener('submit', async (e)=>{
       e.preventDefault(); window.AdminAuth.requireAuth();
       const id = qs('#match-id').value.trim();
       const homeId = qs('#match-home').value; const awayId = qs('#match-away').value;
@@ -100,13 +120,18 @@
       if(score){ const m = score.match(/^(\d+)\s*[-:]\s*(\d+)$/); if(m){ homeGoals = Number(m[1]); awayGoals = Number(m[2]); } }
       if(id){ const mm = matches.find(x=> String(x.id)===String(id)); if(!mm) return; Object.assign(mm, { homeId, awayId, date, time, venue, category, round, homeGoals, awayGoals }); }
       else { matches.push({ id: Date.now(), homeId, awayId, date, time, venue, category, round, homeGoals, awayGoals }); }
-      save(); resetForm(); render();
+      await save(); resetForm(); render();
     });
   }
 
-  function seed(){ if(matches.length===0){ matches=[ { id:'m1', homeId:'t1', awayId:'t2', date:'2025-09-10', time:'18:00', venue:'ستاد النجوم', homeGoals:2, awayGoals:1 } ]; save(); } }
+  async function seed(){ if(matches.length===0){ matches=[ { id:'m1', homeId:'t1', awayId:'t2', date:'2025-09-10', time:'18:00', venue:'ستاد النجوم', homeGoals:2, awayGoals:1 } ]; await save(); } }
 
-  function init(){ fillTeams(); seed(); render(); setup(); }
+  async function init(){ await load(); fillTeams(); await seed(); render(); setup(); }
+
+  if(hasFB && window.dbOnValue){
+    window.dbOnValue('teams', (snap)=>{ if(snap.exists()){ teams = snap.val()||[]; fillTeams(); render(); } });
+    window.dbOnValue('matches', (snap)=>{ if(snap.exists()){ matches = normalizeFromRemote(snap.val()); render(); } });
+  }
 
   document.addEventListener('DOMContentLoaded', init);
 })();

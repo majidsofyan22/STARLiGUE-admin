@@ -2,10 +2,17 @@
   'use strict';
   const qs = (s, r=document) => r.querySelector(s);
   const qsa = (s, r=document) => Array.from(r.querySelectorAll(s));
-  const STORAGE_KEY = 'sl_registrations';
+  const hasFirebase = typeof window !== 'undefined' && !!window.dbGet && !!window.dbSet;
 
-  function getList(){ return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); }
-  function saveList(list){ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+
+
+  async function getList(){
+    try{ const snap = await window.dbGet('registrations'); const arr = snap.exists()? (snap.val()||[]) : []; return ensureStatus(arr); }
+    catch{ return ensureStatus([]); }
+  }
+  async function saveList(list){
+    if(hasFirebase){ try{ await window.dbSet('registrations', list); }catch{} }
+  }
 
   function ensureStatus(list){
     // Add default status 'pending' if missing for backward compatibility
@@ -105,20 +112,20 @@
     return String(str).replace(/[&<>"]+/g, s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[s]));
   }
 
-  function bindActions(list){
+  async function bindActions(list){
     // Approve/Reject buttons
-    qsa('.btn-approve').forEach(b=> b.addEventListener('click', ()=>{
+    qsa('.btn-approve').forEach(b=> b.addEventListener('click', async ()=>{
       const i = Number(b.getAttribute('data-i'));
-      list[i].status = 'approved'; saveList(list); refresh();
+      list[i].status = 'approved'; await saveList(list); refresh();
     }));
-    qsa('.btn-reject').forEach(b=> b.addEventListener('click', ()=>{
+    qsa('.btn-reject').forEach(b=> b.addEventListener('click', async ()=>{
       const i = Number(b.getAttribute('data-i'));
-      list[i].status = 'rejected'; saveList(list); refresh();
+      list[i].status = 'rejected'; await saveList(list); refresh();
     }));
   }
 
-  function refresh(){
-    let list = ensureStatus(getList());
+  async function refresh(){
+    let list = await getList();
     // Fill city select
     const citySel = qs('#city');
     if(citySel && citySel.options.length <= 1){
@@ -132,7 +139,7 @@
     const useCards = qs('#cards-view') && qs('#cards-view').style.display !== 'none';
     if(useCards){ renderCards(filtered); }
     if(qs('#table-view') && qs('#table-view').style.display !== 'none'){ renderTable(filtered); }
-    bindActions(list);
+    await bindActions(list);
   }
 
   function initToggles(){
@@ -147,6 +154,9 @@
   function initFilters(){
     ['q','city','status'].forEach(id=>{ const el = qs('#'+id); if(el){ el.addEventListener('input', refresh); el.addEventListener('change', refresh); } });
   }
+
+  // Live updates
+  if(hasFirebase && window.dbOnValue){ window.dbOnValue('registrations', ()=> refresh()); }
 
   document.addEventListener('DOMContentLoaded', ()=>{ initToggles(); initFilters(); refresh(); });
 })();

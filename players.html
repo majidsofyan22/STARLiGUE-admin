@@ -6,7 +6,10 @@
   <title>ستارليغ - تأهيل اللاعبين</title>
   <link rel="stylesheet" href="../styles/main.css" />
   <link rel="stylesheet" href="../styles/admin.css" />
+  <!-- Firebase CDN (compat) --><script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-storage-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script><!-- Firebase config --><script src="../js/config.js"></script>
   <script defer src="./admin.js"></script>
+  <!-- Load QRCode library from CDN explicitly -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-M8G9f0b9rQ8JmQfY8vS6P0gTgHnQq2Q7r2Y3q6fQ9JzR5p5a0YcCwJwq1vZlUu1sYwKJpUj2bX8r0k3Q4l0b9A==" crossorigin="anonymous"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function(){
       try { window.AdminAuth && window.AdminAuth.requireAuth(); } catch(e) {}
@@ -18,7 +21,7 @@
 <body class="admin admin-players">
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <div class="logo">★</div>
+      <div class="logo"><img src="https://f.top4top.io/p_354656mq11.png" alt="ستارليغ" style="width:36px;height:36px;object-fit:contain" /></div>
       <div class="brand-text">
         <div class="brand-title">ستارليغ</div>
         <div class="brand-sub">لوحة الإدارة</div>
@@ -30,6 +33,7 @@
       <a class="nav-link" href="./teams.html">🛡️ <span>الفرق</span></a>
       <a class="nav-link" href="./matches.html">🏟️ <span>المباريات</span></a>
       <a class="nav-link" href="./news.html">📰 <span>الأخبار</span></a>
+      <a class="nav-link" href="./videos.html">🎬 <span>الفيديوهات</span></a>
       <a class="nav-link" href="./partners.html">🤝 <span>الشركاء</span></a>
       <a class="nav-link" href="./registrations.html">📝 <span>طلبات التسجيل</span></a>
       <a class="nav-link" href="./players.html">✅ <span>تأهيل اللاعبين</span></a>
@@ -42,7 +46,22 @@
 
   <div class="layout-main">
     <header class="topbar">
-      <div class="topbar-left"><div class="search"><input id="players-search" class="input" placeholder="ابحث عن لاعب..." /></div></div>
+      <div class="topbar-left">
+        <div class="search"><input id="players-search" class="input" placeholder="ابحث عن لاعب..." /></div>
+        <div class="filters" style="display:flex; gap:8px; flex-wrap:wrap; margin-inline-start:12px;">
+          <select id="filter-team" class="input" style="min-width:180px">
+            <option value="">كل الفرق</option>
+          </select>
+          <select id="filter-category" class="input" style="min-width:140px">
+            <option value="">كل الفئات</option>
+            <option value="U13">U13</option>
+            <option value="U15">U15</option>
+            <option value="U17">U17</option>
+            <option value="U20">U20</option>
+            <option value="Senior">سينيور</option>
+          </select>
+        </div>
+      </div>
       <div class="topbar-right"><div class="admin-user"><div class="avatar">A</div><div class="meta"><div class="name">المشرف</div><div class="role">Admin</div></div></div></div>
     </header>
 
@@ -58,12 +77,11 @@
                 <th>الاسم</th>
                 <th>الفئة</th>
                 <th>النادي</th>
-                <th>المركز</th>
+                <th>رقم الرخصة</th>
                 <th>الصورة</th>
                 <th>تاريخ الميلاد</th>
-                <th>الحالة الطبية</th>
                 <th>المرفقات</th>
-                <th>كلمة السر</th>
+                <th>QR</th>
                 <th>إجراءات</th>
               </tr>
             </thead>
@@ -72,6 +90,37 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <!-- Modal for photo preview/download -->
+  <div id="photo-modal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+    <div class="modal-body" style="background:#fff; border-radius:10px; max-width:90vw; max-height:90vh; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,0.3); display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+        <div style="font-weight:700">صورة اللاعب</div>
+        <button type="button" id="photo-close" class="btn" style="min-width:80px">إغلاق</button>
+      </div>
+      <div style="overflow:auto; text-align:center;">
+        <img id="photo-large" src="" alt="player" style="max-width:80vw; max-height:70vh; object-fit:contain; border-radius:8px; background:#f6f6f6" />
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <a id="photo-download" class="btn primary" href="#" download>تحميل</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for attachments preview/download -->
+  <div id="attach-modal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+    <div class="modal-body" style="background:#fff; border-radius:10px; max-width:95vw; max-height:92vh; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,0.3); display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+        <div style="font-weight:700">المرفقات</div>
+        <button type="button" id="attach-close" class="btn" style="min-width:80px">إغلاق</button>
+      </div>
+      <div id="attach-list" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+      <div id="attach-preview" style="overflow:auto; text-align:center; background:#f6f6f6; border-radius:8px; padding:8px; min-height:120px;"></div>
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <a id="attach-download" class="btn primary" href="#" download>تحميل</a>
+      </div>
+    </div>
   </div>
 
   <script src="./players.js"></script>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ستارليغ - تأهيل اللاعبين (لوحة الإدارة)</title>
+  <link rel="stylesheet" href="../styles/main.css" />
+  <link rel="stylesheet" href="../styles/admin.css" />
+  <!-- Firebase CDN (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <!-- Firebase config -->
+  <script src="../js/config.js"></script>
+  <!-- Admin auth helpers -->
+  <script src="./admin.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      try { window.AdminAuth && window.AdminAuth.requireAuth(); } catch(e) {}
+      const cur = location.pathname.split('/').pop();
+      document.querySelectorAll('.sidebar .nav-link').forEach(a=>{ if(a.getAttribute('href').includes(cur)) a.classList.add('active'); });
+    });
+  </script>
+  <style>
+    .team-picker { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .team-picker .input { min-width:220px; }
+    .photo-wrap { display:flex; gap:12px; align-items:flex-start; }
+    .photo-preview { width:120px; height:120px; background:#f2f2f2; border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; font-size:42px; }
+    .photo-preview img{ width:100%; height:100%; object-fit:cover; }
+  </style>
+</head>
+<body class="admin admin-qualify">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo"><img src="https://f.top4top.io/p_354656mq11.png" alt="ستارليغ" style="width:36px;height:36px;object-fit:contain" /></div>
+      <div class="brand-text">
+        <div class="brand-title">ستارليغ</div>
+        <div class="brand-sub">لوحة الإدارة</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link" href="./index.html">🏠 <span>اللوحة الرئيسية</span></a>
+      <a class="nav-link" href="./slides.html">🖼️ <span>السلايدر</span></a>
+      <a class="nav-link" href="./teams.html">🛡️ <span>الفرق</span></a>
+      <a class="nav-link" href="./matches.html">🏟️ <span>المباريات</span></a>
+      <a class="nav-link" href="./news.html">📰 <span>الأخبار</span></a>
+      <a class="nav-link" href="./videos.html">🎬 <span>الفيديوهات</span></a>
+      <a class="nav-link" href="./partners.html">🤝 <span>الشركاء</span></a>
+      <a class="nav-link" href="./registrations.html">📝 <span>طلبات التسجيل</span></a>
+      <a class="nav-link" href="./players.html">✅ <span>تأهيل اللاعبين</span></a>
+      <a class="nav-link" href="./qualify.html">📥 <span>إدخال تأهيل (إدمن)</span></a>
+      <a class="nav-link" href="./settings.html">⚙️ <span>الإعدادات</span></a>
+    </nav>
+    <div class="sidebar-foot">
+      <button id="btn-logout" class="btn danger" style="width:100%">تسجيل الخروج</button>
+    </div>
+  </aside>
+
+  <!-- Main area -->
+  <div class="layout-main">
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="search">
+          <input class="input" placeholder="ابحث..." />
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="admin-user">
+          <div class="avatar">A</div>
+          <div class="meta">
+            <div class="name">المشرف</div>
+            <div class="role">Admin</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="content container">
+      <section class="panel">
+        <div class="panel-header">
+          <h1>إدخال تأهيل لاعب</h1>
+          <div class="muted">اختر الفريق ثم عبّئ البيانات وأرسلها. يتم الحفظ على Firebase تلقائياً.</div>
+        </div>
+
+        <!-- Team selector (admin only) -->
+        <div class="card padded" style="margin-bottom:12px">
+          <div class="team-picker">
+            <label class="field" style="margin:0">
+              <span>الفريق</span>
+              <select id="admin-team-select" class="input"></select>
+            </label>
+            <div id="admin-team-name" class="muted"></div>
+          </div>
+        </div>
+
+        <!-- Qualify form (reusing public form structure) -->
+        <form id="qualify-form" class="form card padded">
+          <input type="hidden" id="team-id" />
+          <div class="grid-3">
+            <label class="field"><span>الاسم الكامل</span><input id="q-name" class="input" required placeholder="مثال: محمد أحمد" /></label>
+            <label class="field"><span>الفئة</span>
+              <select id="q-category" class="input" required>
+                <option value="U13">U13</option>
+                <option value="U15">U15</option>
+                <option value="U17">U17</option>
+                <option value="U20">U20</option>
+                <option value="Senior">سينيور</option>
+              </select>
+            </label>
+            <label class="field"><span>تاريخ الميلاد</span><input type="date" id="q-birth" class="input" required /></label>
+          </div>
+
+          <div class="grid-2">
+            <div class="photo-wrap">
+              <div class="photo-preview" id="q-photo-preview">📷</div>
+              <div>
+                <label class="field"><span>صورة اللاعب</span><input type="file" id="q-photo" class="input" accept="image/*" required /></label>
+                <div class="hint">يفضّل صورة مربعة، سيتم إنشاء معاينة تلقائياً.</div>
+              </div>
+            </div>
+            <label class="field">
+              <span>شهادة مدرسية أو شهادة السكن أو جواز السفر</span>
+              <input type="file" id="q-attach-document" class="input" accept="image/*,application/pdf" required />
+            </label>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="btn primary">إرسال</button>
+            <a class="btn" href="./players.html">عرض قائمة التأهيل</a>
+          </div>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <!-- Reuse qualify logic -->
+  <script src="../js/qualify.js"></script>
+  <script>
+    // تعبئة الفرق واختيار الفريق المحدد لحقن team-id واسم الفريق
+    (function(){
+      function $(s, r=document){ return r.querySelector(s); }
+      async function loadTeams(){
+        try{
+          const snap = await window.dbGet('teams');
+          if(!snap || !snap.exists()) return [];
+          const val = snap.val();
+          return Array.isArray(val) ? val : (val && typeof val === 'object' ? Object.values(val) : []);
+        }catch{ return []; }
+      }
+      function populateTeams(sel, teams){
+        sel.innerHTML = '';
+        const opt0 = document.createElement('option'); opt0.value=''; opt0.textContent='— اختر الفريق —'; sel.appendChild(opt0);
+        teams.forEach(t=>{ const o=document.createElement('option'); o.value=String(t.id); o.textContent=t.name || ('فريق #'+t.id); sel.appendChild(o); });
+      }
+      async function initAdminQualify(){
+        const sel = $('#admin-team-select');
+        const outName = $('#admin-team-name');
+        const idEl = $('#team-id');
+        const teams = await loadTeams();
+        populateTeams(sel, teams);
+        sel.addEventListener('change', ()=>{
+          const tid = sel.value || '';
+          idEl.value = tid;
+          const t = teams.find(x=> String(x.id)===String(tid));
+          outName.textContent = t ? ('الفريق: ' + t.name) : '';
+        });
+      }
+      if(document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', initAdminQualify);
+      } else {
+        initAdminQualify();
+      }
+    })();
+  </script>
+</body>
+</html>

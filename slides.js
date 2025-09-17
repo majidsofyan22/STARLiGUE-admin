@@ -2,23 +2,34 @@
   'use strict';
   const qs = (s, r=document) => r.querySelector(s);
   const qsa = (s, r=document) => Array.from(r.querySelectorAll(s));
-
-  const storage = {
-    get(k, f){ try{return JSON.parse(localStorage.getItem(k)) ?? f;}catch{return f;} },
-    set(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
-  };
+  const hasFB = typeof window !== 'undefined' && !!window.dbGet && !!window.dbSet;
 
   const state = {
-    slides: storage.get('sl_slides', []),
-    settings: storage.get('sl_slider_settings', { autoplay:true, interval:6 })
+    slides: [],
+    settings: { autoplay:true, interval:6 }
   };
-  function save(){
-    storage.set('sl_slides', state.slides);
+
+  // Generate a stable id (used for storage path and record id)
+  function genId(){
+    return String(Date.now()) + '-' + Math.random().toString(36).slice(2,8);
   }
+
+  async function load(){
+    if(!hasFB){ state.slides=[]; state.settings={ autoplay:true, interval:6 }; return; }
+    try{
+      const [slidesSnap, settingsSnap] = await Promise.all([ window.dbGet('slides'), window.dbGet('slider_settings') ]);
+      state.slides = slidesSnap.exists()? (slidesSnap.val()||[]) : [];
+      state.settings = settingsSnap.exists()? (settingsSnap.val()||state.settings) : state.settings;
+    }catch{
+      state.slides=[]; state.settings={ autoplay:true, interval:6 };
+    }
+  }
+  async function saveSlides(){ if(hasFB){ try{ await window.dbSet('slides', state.slides); }catch{} } }
 
   // Helpers
   function resetForm(){
     qs('#slide-id').value = '';
+    qs('#slide-storage-path').value = '';
     qs('#slide-url').value = '';
     qs('#slide-file').value = '';
     qs('#slide-caption').value = '';
@@ -27,6 +38,7 @@
 
   function render(){
     const tbody = qs('#slides-table tbody');
+    if(!tbody) return;
     tbody.innerHTML = '';
     state.slides.forEach((s,i)=>{
       const tr = document.createElement('tr');
@@ -63,31 +75,43 @@
     });
   }
 
-  function persistOrder(){
+  async function persistOrder(){
     const ids = qsa('#slides-table tbody tr').map(tr => tr.dataset.id);
     const map = new Map(state.slides.map(s=> [String(s.id), s]));
     state.slides = ids.map(id => map.get(String(id))).filter(Boolean);
-    save();
+    await saveSlides();
     render();
   }
 
-  function move(id, dir){
+  async function move(id, dir){
     const idx = state.slides.findIndex(s=> String(s.id)===String(id));
     if(idx<0) return;
     const ni = idx + dir; if(ni<0 || ni>=state.slides.length) return;
     const [it] = state.slides.splice(idx,1);
     state.slides.splice(ni,0,it);
-    save(); render();
+    await saveSlides();
+    render();
   }
 
-  function del(id){
-    state.slides = state.slides.filter(s=> String(s.id)!==String(id));
-    save(); render();
+  async function del(id){
+    const s = state.slides.find(x=> String(x.id)===String(id));
+    if(!s) return;
+    const ok = window.confirm('هل تريد حذف هذه الصورة نهائيًا؟');
+    if(!ok) return;
+    // Remove storage file if it exists
+    if(s.storagePath && typeof window.deleteFromStorage === 'function'){
+      try{ await window.deleteFromStorage(String(s.storagePath)); }catch{}
+    }
+    state.slides = state.slides.filter(x=> String(x.id)!==String(id));
+    await saveSlides();
+    render();
+    try{ alert('تم الحذف نهائيًا'); }catch{}
   }
 
   function openEdit(id){
     const s = state.slides.find(x=> String(x.id)===String(id)); if(!s) return;
     qs('#slide-id').value = s.id;
+    qs('#slide-storage-path').value = s.storagePath || '';
     qs('#slide-url').value = s.url || '';
     qs('#slide-file').value = '';
     qs('#slide-caption').value = s.caption || '';
@@ -95,7 +119,6 @@
     window.scrollTo({ top:0, behavior:'smooth' });
   }
 
-  // File -> DataURL
   function fileToDataUrl(file){
     return new Promise((res, rej)=>{
       const rd = new FileReader();
@@ -108,60 +131,104 @@
   function setupForm(){
     const form = qs('#form-slide');
     const resetBtn = qs('#btn-reset');
-    resetBtn.addEventListener('click', resetForm);
+    resetBtn?.addEventListener('click', resetForm);
 
-    form.addEventListener('submit', async (e)=>{
+    // Auto-upload on file select -> fill URL & storage path automatically
+    const fileInput = qs('#slide-file');
+    fileInput?.addEventListener('change', async ()=>{
+      const file = fileInput.files && fileInput.files[0];
+      if(!file) return;
+      // Ensure we have a stable id before upload (for new records)
+      let id = qs('#slide-id').value.trim();
+      if(!id){ id = genId(); qs('#slide-id').value = id; }
+      const ext = (file.name||'jpg').split('.').pop();
+      const storagePath = `slides/${id}/image.${ext}`;
+      try{
+        const url = await window.uploadFile(storagePath, file);
+        qs('#slide-url').value = url;                 // auto fill URL
+        qs('#slide-storage-path').value = storagePath; // keep link for delete/update
+      }catch(err){ alert('تعذر رفع الصورة: ' + (err.message || '')); }
+    });
+
+    form?.addEventListener('submit', async (e)=>{
       e.preventDefault();
-      const id = qs('#slide-id').value.trim();
-      const urlInput = qs('#slide-url').value.trim();
+      let id = qs('#slide-id').value.trim();
+      let finalUrl = qs('#slide-url').value.trim();
       const file = qs('#slide-file').files[0];
       const caption = qs('#slide-caption').value.trim();
       const link = qs('#slide-link').value.trim();
+      let storagePath = qs('#slide-storage-path').value.trim();
 
-      let finalUrl = urlInput;
-      if(!finalUrl && file){ finalUrl = await fileToDataUrl(file); }
+      // If no id yet, create one (keeps consistent storage path)
+      if(!id){ id = genId(); qs('#slide-id').value = id; }
+
+      // If URL empty but file selected and no auto-upload happened (fallback)
+      if(!finalUrl && file){
+        const ext = (file.name||'jpg').split('.').pop();
+        storagePath = `slides/${id}/image.${ext}`;
+        try{ finalUrl = await window.uploadFile(storagePath, file); }catch{}
+      }
       if(!finalUrl){ alert('الرجاء إدخال رابط الصورة أو اختيار ملف'); return; }
 
       if(id){
-        const s = state.slides.find(x=> String(x.id)===String(id)); if(!s) return;
-        s.url = finalUrl; s.caption = caption; s.link = link;
-      } else {
-        state.slides.push({ id: Date.now(), url: finalUrl, caption, link });
+        const s = state.slides.find(x=> String(x.id)===String(id));
+        if(s){
+          // If updating and new path differs, clean old
+          if(s.storagePath && storagePath && s.storagePath !== storagePath && typeof window.deleteFromStorage === 'function'){
+            try{ await window.deleteFromStorage(String(s.storagePath)); }catch{}
+          }
+          s.url = finalUrl; s.caption = caption; s.link = link; s.storagePath = storagePath || s.storagePath || '';
+        } else {
+          // New record path
+          state.slides.push({ id, url: finalUrl, caption, link, storagePath });
+        }
       }
-      save(); resetForm(); render();
+      await saveSlides(); resetForm(); render();
     });
   }
 
   function setupSettings(){
     const autoSel = qs('#set-autoplay');
     const interval = qs('#set-interval');
-    autoSel.value = String(!!state.settings.autoplay);
-    interval.value = Number(state.settings.interval || 6);
 
-    qs('#save-settings').addEventListener('click', ()=>{
-      state.settings.autoplay = (autoSel.value === 'true');
-      const n = Number(interval.value); state.settings.interval = (Number.isFinite(n) && n>=2 && n<=30) ? n : 6;
-      storage.set('sl_slider_settings', state.settings);
-      alert('تم حفظ الإعدادات');
+    // Fill inputs from current state
+    function fill(){
+      if(autoSel) autoSel.value = (state.settings?.autoplay !== false) ? 'true' : 'false';
+      if(interval) interval.value = String(Math.max(2, Math.min(30, Number(state.settings?.interval)||6)));
+    }
+    fill();
+
+    // Save settings to DB
+    qs('#save-settings')?.addEventListener('click', async ()=>{
+      const settings = {
+        autoplay: (autoSel?.value === 'true'),
+        interval: (Number.isFinite(Number(interval?.value)) ? Math.max(2, Math.min(30, Number(interval?.value))) : 6)
+      };
+      try{
+        await window.dbSet('slider_settings', settings);
+        state.settings = settings;
+        fill();
+        alert('تم حفظ الإعدادات');
+      }catch{}
     });
   }
 
-  function seed(){
+  async function seed(){
     if(state.slides.length===0){
       state.slides = [
         { id:'s1', url:'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=1600&q=80', caption:'كرة القدم المغربية' },
         { id:'s2', url:'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=1600&q=80', caption:'المنافسات الوطنية' },
         { id:'s3', url:'https://images.unsplash.com/photo-1517927033932-b3d18e61fb3a?w=1600&q=80', caption:'المنتخبات الوطنية' }
       ];
-      save();
+      await saveSlides();
     }
   }
 
-  function init(){
-    seed();
-    setupForm();
-    setupSettings();
-    render();
+  async function init(){ await load(); /* seed removed to prevent auto re-adding deleted slides */ setupForm(); setupSettings(); render(); }
+
+  if(hasFB && window.dbOnValue){
+    window.dbOnValue('slides', (snap)=>{ if(snap.exists()){ state.slides = snap.val()||[]; render(); } });
+    window.dbOnValue('slider_settings', (snap)=>{ if(snap.exists()){ state.settings = snap.val()||state.settings; } });
   }
 
   document.addEventListener('DOMContentLoaded', init);

@@ -6,31 +6,32 @@
   <title>تسجيل الدخول - ستارليغ</title>
   <link rel="stylesheet" href="../styles/main.css" />
   <link rel="stylesheet" href="../styles/admin.css" />
+
 </head>
 <body class="admin">
   <main class="login-page">
     <div class="login-card">
       <div class="login-brand">
-        <div class="login-logo">★</div>
+        <div class="login-logo"><img src="https://f.top4top.io/p_354656mq11.png" alt="شعار ستارليغ" /></div>
         <div>
           <div class="login-title">لوحة إدارة ستارليغ</div>
-          <div class="login-muted">يرجى إدخال بياناتك للوصول إلى لوحة التحكم</div>
+          <div class="login-muted">يرجى إدخال بريدك وكلمة المرور للوصول إلى لوحة التحكم</div>
         </div>
       </div>
 
       <div class="form">
         <label class="field">
-          <span>اسم المستخدم</span>
-          <input id="user" class="input" placeholder="admin" />
+          <span>البريد الإلكتروني</span>
+          <input id="user" class="input" type="email" placeholder="admin@example.com" autocomplete="username" />
         </label>
         <label class="field">
           <span>كلمة المرور</span>
           <div style="display:flex; align-items:center; gap:8px">
-            <input id="pass" type="password" class="input" placeholder="123456" style="flex:1" />
-            <button id="toggle" class="btn" type="button" style="padding:6px 10px">👁️</button>
+            <input id="pass" type="password" class="input" placeholder="••••••••" style="flex:1" autocomplete="current-password" />
+            <button id="toggle" class="btn" type="button" aria-label="إظهار/إخفاء كلمة المرور" title="إظهار/إخفاء كلمة المرور">👁️</button>
           </div>
           <div class="login-muted" style="margin-top:6px">
-            كلمة المرور الافتراضية 123456 ويمكن تغييرها من صفحة الإعدادات
+            يتم إدارة حسابات الإدمن من Firebase Auth (البريد/كلمة المرور)
           </div>
         </label>
         <div class="actions" style="margin-top:10px">
@@ -41,23 +42,24 @@
     </div>
   </main>
 
+  <!-- Firebase CDN (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <!-- Firebase config -->
+  <script src="../js/config.js"></script>
+  <!-- AdminAuth wiring + login handlers (now centralized) -->
   <script src="./admin.js"></script>
   <script>
-    // Password toggle
-    document.querySelector('#toggle').addEventListener('click', ()=>{
-      const p = document.querySelector('#pass');
-      p.type = (p.type === 'password') ? 'text' : 'password';
-    });
-
-    // Perform login
-    document.querySelector('#login').addEventListener('click', ()=>{
-      const u = document.querySelector('#user').value.trim();
-      const p = document.querySelector('#pass').value.trim();
-      const ok = window.AdminAuth.login(u,p);
-      const msg = document.querySelector('#login-msg');
-      if(ok){ msg.textContent = 'تم تسجيل الدخول، يتم تحويلك الآن...'; msg.style.color = '#00d4a6'; setTimeout(()=> location.href = './index.html', 600); }
-      else { msg.textContent = 'بيانات غير صحيحة'; msg.style.color = '#ff8b9d'; }
-    });
+    // السماح بالتشغيل من file:// أيضاً والاعتماد على Firebase فقط
+    (function(){
+      const okProto = /^(http|https|file):$/i.test(location.protocol);
+      if(!okProto){ console.warn('Protocol not standard; continuing.'); }
+      if(!(window.firebase && window.firebaseAuth)){
+        console.warn('Firebase غير مهيأ بعد. تأكد من سكربتات Firebase + config.js');
+      }
+    })();
   </script>
 </body>
 </html>
